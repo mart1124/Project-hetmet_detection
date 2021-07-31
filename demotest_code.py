@@ -12,10 +12,10 @@ import yolo
 
 #### H=1080,W=1920 Video Path ####
 Camera_Path = "rtsp://admin:Total9999%2B@192.168.1.50/Streaming/Channels/1"
-Video_Path = "../data/video/resize.mp4"
+Video_Path = "./data/video/resize.mp4"
 #### Yolo Path ####
-data_path = "../data"
-weightsPath = "../weights/yolov4-custom_final.weights"
+data_path = "./data"
+weightsPath = "./weights/yolov4-custom_final.weights"
 configPath = data_path + "/" + "yolov4-custom.cfg"
 labelsPath = data_path + "/labels/" + "objv4.names"
 #### Check Video Error ####
@@ -110,12 +110,10 @@ while cap.isOpened():
         # print(w/h)
         if c <= (int(3*W/4+W/50)) and c >= (int(3*W/4-W/50)):
             print('เข้า')
-            for (xm,ym,hm,wm) in motorbike:
-                motorROI = gray[ym:ym+ hm, xm:xm + wm]
             dets = yolo.Yolov4(motion_roi, LABELS, colors, net, ln,roi_w1,roi_h1)
             # boxx, confi, classIDs = yolo.Yolov4(roi1, LABELS, colors, net, ln,roi_w,roi_h)
             # print(dets)
-            cv2.imshow("ROI", motorROI)
+            cv2.imshow("ROI", motion_roi)
 
         
     # cv2.line(frame_resize1, (int(3*W/4+W/50),0), (int(3*W/4-W/50),1080),(255,0,0),2)
