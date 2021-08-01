@@ -2,12 +2,10 @@ import cv2
 import numpy as np
 import imutils
 import time
+from threading import Thread
 
-from numpy.core.fromnumeric import sort
 from numpy.core.numeric import rollaxis
-import yolo
-
-
+from yolo import YOLOv4
 
 
 #### H=1080,W=1920 Video Path ####
@@ -28,9 +26,10 @@ except cv2.error as e:
 except Exception as e:
     print("Exception:", e)
 else:
-    print("เปิดไฟล์วีดีโอ..")
+    print("Open Video file...")
     time.sleep(0.5)
-    print("สำเร็จ")
+    print("Start Program")
+    time.sleep(0.5)
 
 ret, frame1 = cap.read()
 ret, frame2 = cap.read()
@@ -38,28 +37,42 @@ ret, frame2 = cap.read()
 #### ตัวแปรต่างๆ ####
 cuda = True
 (H,W) = (None,None)
-(roi_h,roi_w) = (None,None)
 starting_time = time.time()
-frame_id = 0
-first_frame = None
+frame_id = 0 
 #### yolo ####
-LABELS = open(labelsPath).read().strip().split("\n")
-colors = [[0,255,0],[0,0,255]]
-COLORS = np.random.randint(0, 255, size=(len(LABELS), 3),
-	dtype="uint8")
 net = cv2.dnn.readNetFromDarknet(configPath, weightsPath)
 if cuda:
     net.setPreferableBackend(cv2.dnn.DNN_BACKEND_CUDA)
     net.setPreferableTarget(cv2.dnn.DNN_TARGET_CUDA)
-ln = net.getLayerNames()
-ln = [ln[i[0] - 1] for i in net.getUnconnectedOutLayers()]
-#### TrackBar
-def notthing(x):
-    pass
-# cv2.namedWindow('Object Detection')
-# cv2.createTrackbar('Cnts_Area','Object Detection',0,20000,notthing)
-#### tracker 
-tracker = cv2.TrackerCSRT_create()
+
+model = YOLOv4(weightsPath, configPath, labelsPath, confidence_threshold=0.5, nms_threshold=0.6)
+
+def motion_detect(frame_resize1,frame_resize2):
+    diff = cv2.absdiff(frame_resize1,frame_resize2) #เปรียบเทียบ ระหว่าง frame1 และ frame2 (frame1 - frame2)
+    gray = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY) #แปลงภาพที่ทำการ เปรียบเทียบแล้ว เป็นภาพสีเทา
+    # blur = cv2.medianBlur(gray,5)
+    blur = cv2.GaussianBlur(gray, (21,21), 2) #ลบ noise
+    _, thresh = cv2.threshold(blur, 25, 255, cv2.THRESH_BINARY)
+    kernel = np.zeros((2,2), np.uint8)
+    closing = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE,kernel)
+    opening = cv2.morphologyEx(closing, cv2.MORPH_OPEN,kernel)
+    dilated = cv2.dilate(opening, kernel, iterations=2)
+    cnts, _ = cv2.findContours(dilated, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    counter = 0
+
+    for contour in cnts:
+        area = cv2.contourArea(contour)
+        if  area >= 3000 and area <= 7000 :
+            # print(area)
+            (x, y, w, h) = cv2.boundingRect(contour) 
+            x2 = x + int(w/2)
+            y2 = y + int(h/2)
+            motion_roi = frame_resize1[y-20:y+int(h/3) , x+10:x+int(w*1.2)]
+            c = x2
+            if c <= (int(3*W/4+W/50)) and c >= (int(3*W/4-W/50)):
+                threadProcessImage = Thread(target = model.detect(roi1))
+                threadProcessImage.start()
+
 while cap.isOpened():
     if frame1 is None and frame2 is None:
         print('Completed')
@@ -75,62 +88,51 @@ while cap.isOpened():
     
     roi1 = frame_resize1[172:551, 585:865] #resize_img
     roi1_gray = cv2.cvtColor(frame_resize1, cv2.COLOR_BGR2GRAY)
-    # roi1 = frame_resize1[526:1047,954:1750]
-    if roi_h is None or roi_w is None:
-        (roi_h,roi_w) = roi1.shape[:2]
-    # ปรับแต่ง
-    diff = cv2.absdiff(frame_resize1,frame_resize2) #เปรียบเทียบ ระหว่าง frame1 และ frame2 (frame1 - frame2)
-    gray = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY) #แปลงภาพที่ทำการ เปรียบเทียบแล้ว เป็นภาพสีเทา
-    # blur = cv2.medianBlur(gray,5)
-    blur = cv2.GaussianBlur(gray, (21,21), 2) #ลบ noise
-    _, thresh = cv2.threshold(blur, 25, 255, cv2.THRESH_BINARY)
-    kernel = np.zeros((2,2), np.uint8)
-    closing = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE,kernel)
-    opening = cv2.morphologyEx(closing, cv2.MORPH_OPEN,kernel)
-    # opening = cv2.morphologyEx(opening, cv2.MORPH_OPEN,kernel,iterations=3)
-    dilated = cv2.dilate(opening, kernel, iterations=2)
-    cnts, _ = cv2.findContours(dilated, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    counter = 0
 
-    for contour in cnts:
-        area = cv2.contourArea(contour)
-        # trackbar = cv2.getTrackbarPos('Cnts_Area','Object Detection')
-        if area < 3000:
-            # print(cv2.contourArea(contour))
-            continue
-        # print(cv2.contourArea(contour))
-        (x, y, w, h) = cv2.boundingRect(contour) 
-        x2 = x + int(w/2)
-        y2 = y + int(h/2)
-        motion_roi = frame_resize1[y-20:y+int(h/3) , x+10:x+int(w*1.2)]
-        (roi_h1,roi_w1) = motion_roi.shape[:2]
-        # cv2.rectangle(frame_resize1,(x,y),(x+w,y+h),(0,255,0),3)
-        # cv2.circle(frame1, (x2,y2), 4, (0,255,0), -1)
-        c = x2
-        # print(w/h)
-        if c <= (int(3*W/4+W/50)) and c >= (int(3*W/4-W/50)):
-            print('เข้า')
-            dets = yolo.Yolov4(motion_roi, LABELS, colors, net, ln,roi_w1,roi_h1)
-            # boxx, confi, classIDs = yolo.Yolov4(roi1, LABELS, colors, net, ln,roi_w,roi_h)
-            # print(dets)
-            cv2.imshow("ROI", motion_roi)
+    
+    threadMotion= Thread(target = motion_detect(frame_resize1,frame_resize2))
+    threadMotion.start()
+    # diff = cv2.absdiff(frame_resize1,frame_resize2) #เปรียบเทียบ ระหว่าง frame1 และ frame2 (frame1 - frame2)
+    # gray = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY) #แปลงภาพที่ทำการ เปรียบเทียบแล้ว เป็นภาพสีเทา
+    # # blur = cv2.medianBlur(gray,5)
+    # blur = cv2.GaussianBlur(gray, (21,21), 2) #ลบ noise
+    # _, thresh = cv2.threshold(blur, 25, 255, cv2.THRESH_BINARY)
+    # kernel = np.zeros((2,2), np.uint8)
+    # closing = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE,kernel)
+    # opening = cv2.morphologyEx(closing, cv2.MORPH_OPEN,kernel)
+    # dilated = cv2.dilate(opening, kernel, iterations=2)
+    # cnts, _ = cv2.findContours(dilated, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    # counter = 0
 
-        
-    # cv2.line(frame_resize1, (int(3*W/4+W/50),0), (int(3*W/4-W/50),1080),(255,0,0),2)
-    # cv2.line(frame_resize1, (int(3*W/4+W/50),0), (int(3*W/4+W/50),1080), (0, 255, 0), thickness=2)
-    # cv2.line(frame_resize1, (int(3*W/4-W/50),0), (int(3*W/4-W/50),1080), (0, 255, 0), thickness=2)
+    # for contour in cnts:
+    #     area = cv2.contourArea(contour)
+    #     if  area >= 3000 and area <= 7000 :
+    #         # print(area)
+    #         (x, y, w, h) = cv2.boundingRect(contour) 
+    #         x2 = x + int(w/2)
+    #         y2 = y + int(h/2)
+    #         motion_roi = frame_resize1[y-20:y+int(h/3) , x+10:x+int(w*1.2)]
+    #         c = x2
+    #         if c <= (int(3*W/4+W/50)) and c >= (int(3*W/4-W/50)):
+    #             threadProcessImage = Thread(target = model.detect(roi1))
+    #             threadProcessImage.start()
+    
+    #### Line ที่ใช้แสดงพิ้นที่ในการตรวจจับ
+    cv2.line(frame_resize1, (int(3*W/4+W/50),0), (int(3*W/4-W/50),1080),(255,0,0),2)
+    cv2.line(frame_resize1, (int(3*W/4+W/50),0), (int(3*W/4+W/50),1080), (0, 255, 0), thickness=2)
+    cv2.line(frame_resize1, (int(3*W/4-W/50),0), (int(3*W/4-W/50),1080), (0, 255, 0), thickness=2)
     
 
-
+    #### FPS Show
     elapsed_time = time.time() - starting_time 
     fps = frame_id / elapsed_time
     cv2.putText(frame_resize1, "FPS: " + str(round(fps, 2)), (10, 50), cv2.FONT_HERSHEY_PLAIN, 3, (0, 0, 255), 3)
-    #### resize
+    #### resize รูปภาพ
     # show_frame = cv2.resize(frame1,(1000,500))
     # Roi = cv2.resize(roi1,(800,500))
-    #### show
+    #### แสดงผลการตรวจจับ
     cv2.imshow("Object Detection", frame_resize1)
-    # cv2.imshow("ROI", gray)
+    cv2.imshow("ROI", roi1)
 
     frame1 = frame2
     ret,frame2 = cap.read()

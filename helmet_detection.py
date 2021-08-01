@@ -2,10 +2,11 @@ import cv2
 import numpy as np
 import imutils
 import time
+from threading import Thread
 
 from numpy.core.fromnumeric import sort
 from numpy.core.numeric import rollaxis
-import yolo
+from yolo import YOLOv4
 
 
 
@@ -43,22 +44,13 @@ starting_time = time.time()
 frame_id = 0
 first_frame = None
 #### yolo ####
-LABELS = open(labelsPath).read().strip().split("\n")
-colors = [[0,255,0],[0,0,255]]
-COLORS = np.random.randint(0, 255, size=(len(LABELS), 3),
-	dtype="uint8")
 net = cv2.dnn.readNetFromDarknet(configPath, weightsPath)
 if cuda:
     net.setPreferableBackend(cv2.dnn.DNN_BACKEND_CUDA)
     net.setPreferableTarget(cv2.dnn.DNN_TARGET_CUDA)
-ln = net.getLayerNames()
-ln = [ln[i[0] - 1] for i in net.getUnconnectedOutLayers()]
-#### TrackBar
-def notthing(x):
-    pass
-# cv2.namedWindow('Object Detection')
-# cv2.createTrackbar('Cnts_Area','Object Detection',0,20000,notthing)
-#### tracker 
+    
+model = YOLOv4(weightsPath, configPath, labelsPath, confidence_threshold=0.5, nms_threshold=0.6)
+
 while cap.isOpened():
     if frame1 is None and frame2 is None:
         print('Completed')
@@ -104,9 +96,11 @@ while cap.isOpened():
         c = x2
         # print(w/h)
         if c <= (int(3*W/4+W/50)) and c >= (int(3*W/4-W/50)):
-            print('เข้า')
-            dets = yolo.Yolov4(roi1, LABELS, colors, net, ln,roi_w,roi_h)
-            print(dets)
+            # print('เข้า')
+            # dets = yolo.Yolov4(roi1, LABELS, colors, net, ln,roi_w,roi_h)
+            # print(dets)
+            threadProcessImage = Thread(target = model.detect(roi1))
+            threadProcessImage.start()
    
     # cv2.line(frame1, (int(3*W/4+W/50),0), (int(3*W/4-W/50),1080),(255,0,0),2)
     # cv2.line(frame1, (int(3*W/4+W/50),0), (int(3*W/4+W/50),1080), (0, 255, 0), thickness=2)
