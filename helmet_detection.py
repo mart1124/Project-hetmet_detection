@@ -13,7 +13,7 @@ from yolo import YOLOv4
 
 #### H=1080,W=1920 Video Path ####
 Camera_Path = "rtsp://admin:Total9999%2B@192.168.1.50/Streaming/Channels/1"
-Video_Path = "./data/video/resize.mp4"
+Video_Path = "./data/video/400_1.mp4"
 #### Yolo Path ####
 data_path = "./data"
 weightsPath = "./weights/yolov4-custom_final.weights"

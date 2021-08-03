@@ -20,9 +20,9 @@ class YOLOv4():
         self.nms_threshold = nms_threshold
 
     def forward(self, frame):
-        blob = cv2.dnn.blobFromImage(frame, 1 / 255.0, (416, 416), swapRB=True, crop=False)
+        blob =  cv2.dnn.blobFromImage(frame, 1 / 255.0, (416, 416), swapRB=True, crop=False)
         self.net.setInput(blob)
-        layerOutputs = self.net.forward(self.ln)
+        layerOutputs =  self.net.forward(self.ln)
         return layerOutputs
 
     def detect(self, frame):
