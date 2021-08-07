@@ -74,7 +74,7 @@ class YOLOv4():
                     dets.append([boxes[i], confidences[i], classIDs[i]])
                     # draw a bounding box rectangle and label on the frame
                     color = [int(c) for c in self.colors[classIDs[i]]]
-                    cv2.rectangle(frame, (x, y), (x + w, y + h), color, 2)
+                    cv2.rectangle(frame, (x, y), (x + w , y + h), color, 2)
                     text = "{}: {:.4f}".format(self.object_names[classIDs[i]],
                         confidences[i])
                     cv2.putText(frame, text, (x, y - 5),
