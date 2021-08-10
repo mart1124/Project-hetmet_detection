@@ -64,17 +64,15 @@ class YOLOv4():
                     confidences.append(float(confidence))
                     classIDs.append(classID)
             idxs = cv2.dnn.NMSBoxes(boxes, confidences, 0.3, 0.6)
-            dets = []
             if len(idxs) > 0:
             # loop over the indexes we are keeping
                 for i in idxs.flatten():
                     # extract the bounding box coordinates
                     (x, y) = (boxes[i][0], boxes[i][1])
                     (w, h) = (boxes[i][2], boxes[i][3])
-                    dets.append([boxes[i], confidences[i], classIDs[i]])
                     # draw a bounding box rectangle and label on the frame
                     color = [int(c) for c in self.colors[classIDs[i]]]
-                    cv2.rectangle(frame, (x, y), (x + w , y + h), color, 2)
+                    cv2.rectangle(frame, (x, y), (x + w, y + h), color, 2)
                     text = "{}: {:.4f}".format(self.object_names[classIDs[i]],
                         confidences[i])
                     cv2.putText(frame, text, (x, y - 5),
