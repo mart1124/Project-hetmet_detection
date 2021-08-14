@@ -8,7 +8,6 @@ from numpy.core.fromnumeric import sort
 from numpy.core.numeric import rollaxis
 from yolo import YOLOv4
 
-print("OpenCV Version: {}".format(cv2.__version__))
 #### H=1080,W=1920 Video Path ####
 Camera_Path = "rtsp://admin:Total9999%2B@192.168.1.50/Streaming/Channels/1"
 Video_Path = "./data/video/resize.mp4"
@@ -40,6 +39,7 @@ cuda = True
 (roi_h,roi_w) = (None,None)
 starting_time = time.time()
 frame_id = 0
+counter = 0
 first_frame = None
 #### yolo ####
 net = cv2.dnn.readNetFromDarknet(configPath, weightsPath)
@@ -77,15 +77,11 @@ while cap.isOpened():
     # opening = cv2.morphologyEx(opening, cv2.MORPH_OPEN,kernel,iterations=3)
     dilated = cv2.dilate(opening, kernel, iterations=2)
     cnts, _ = cv2.findContours(dilated, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    counter = 0
+    
 
     for contour in cnts:
         area = cv2.contourArea(contour)
-        if area < 2500:
-            continue
-        # trackbar = cv2.getTrackbarPos('Cnts_Area','Object Detection')
         if  area >= 2500 and area <= 7000 :
-            print(area)
             (x, y, w, h) = cv2.boundingRect(contour)
             x2 = x + int(w/2)
             y2 = y + int(h/2)
@@ -95,12 +91,13 @@ while cap.isOpened():
             # print(w/h)
             if c <= (int(3*W/4+W/50)) and c >= (int(3*W/4-W/50)):
                 print('เข้า')
+                counter += 1
                 threadProcessImage = Thread(target = model.detect(roi1))
                 threadProcessImage.start()
-   
-    cv2.line(frame1, (int(3*W/6+W/50),0), (int(3*W/6-W/50),1080),(255,0,0),2)
-    cv2.line(frame1, (int(3*W/6+W/50),0), (int(3*W/6+W/50),1080), (0, 255, 0), thickness=2)
-    cv2.line(frame1, (int(3*W/6-W/50),0), (int(3*W/6-W/50),1080), (0, 255, 0), thickness=2)
+                
+    cv2.line(frame_resize1, (int(3*W/6+W/50),0), (int(3*W/6-W/50),1080),(255,0,0),2)
+    cv2.line(frame_resize1, (int(3*W/6+W/50),0), (int(3*W/6+W/50),1080), (0, 255, 0), thickness=2)
+    cv2.line(frame_resize1, (int(3*W/6-W/50),0), (int(3*W/6-W/50),1080), (0, 255, 0), thickness=2)
     
 
 
@@ -108,10 +105,10 @@ while cap.isOpened():
     fps = frame_id / elapsed_time
     cv2.putText(frame1, "FPS: " + str(round(fps, 2)), (10, 50), cv2.FONT_HERSHEY_PLAIN, 3, (0, 0, 255), 3)
     #### resize
-    show_frame = cv2.resize(frame1,(1000,500))
+    # show_frame = cv2.resize(frame1,(1000,500))
     # Roi = cv2.resize(roi1,(800,500))
     #### show
-    cv2.imshow("Object Detection", show_frame)
+    cv2.imshow("Object Detection", frame_resize1)
     cv2.imshow("ROI", dilated)
 
     frame1 = frame2

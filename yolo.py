@@ -13,22 +13,25 @@ class YOLOv4():
 
         self.colors = [[0,255,0],[0,0,255]]
     
-        self.img_height = None
-        self.img_width = None
+        # self.img_height = None
+        # self.img_width = None
 
         self.confidence_threshold = confidence_threshold
         self.nms_threshold = nms_threshold
+        # Counter var
+        self.counter_helmet = 0
+        self.counter_no_helmet = 0
 
     def forward(self, frame):
-        blob =  cv2.dnn.blobFromImage(frame, 1 / 255.0, (416, 416), swapRB=True, crop=False)
+        blob =  cv2.dnn.blobFromImage(frame, 1 / 255.0, (416, 416), swapRB=True, crop=True)
         self.net.setInput(blob)
         layerOutputs =  self.net.forward(self.ln)
         return layerOutputs
 
-    def detect(self, frame):
+    def detect(self, frame , frame_result):
         # print("/////////in////////")
-        if self.img_height is None or self.img_width is None:
-            (self.img_height, self.img_width) = frame.shape[:2]
+        # if self.img_height is None or self.img_width is None:
+        (self.img_height, self.img_width) = frame.shape[:2]
         layerOutputs = self.forward(frame)
 
         boxes = []
@@ -78,4 +81,13 @@ class YOLOv4():
                     cv2.putText(frame, text, (x, y - 5),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1)
                         # check if the video writer is Non
+                    if self.object_names[classIDs[i]] != None and len(idxs) != None:
+                        if self.object_names[classIDs[i]] == "Helmet":
+                            self.counter_helmet += 1
+                        if self.object_names[classIDs[i]] == "No_Helmet":
+                            self.counter_no_helmet += 1
+                        return (self.counter_helmet,self.counter_no_helmet)
+                    else:
+                        return None   
+            
 
